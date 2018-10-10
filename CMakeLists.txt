@@ -177,8 +177,8 @@ IF(CPUINFO_SUPPORTED_PLATFORM)
   ENDIF()
 
   IF(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR CMAKE_SYSTEM_NAME STREQUAL "Android")
-    LIST(APPEND CPUINFO_SRCS  
-      src/linux/smallfile.c    
+    LIST(APPEND CPUINFO_SRCS
+      src/linux/smallfile.c
       src/linux/multiline.c
       src/linux/current.c
       src/linux/cpulist.c
@@ -227,6 +227,12 @@ IF(CPUINFO_SUPPORTED_PLATFORM)
   IF(IOS)
     TARGET_LINK_LIBRARIES(cpuinfo INTERFACE "-framework OpenGLES")
     TARGET_LINK_LIBRARIES(cpuinfo INTERFACE "-framework Foundation")
+    IF ( COMMAND make_universal )
+      make_universal( cpuinfo )
+      set_target_properties( cpuinfo PROPERTIES
+        XCODE_ATTRIBUTE_EXCLUDED_SOURCE_FILE_NAMES[sdk=iphonesimulator*] "src/arm/mach/init.c"
+      )
+    ENDIF()
   ENDIF()
 ELSE()
   TARGET_COMPILE_DEFINITIONS(cpuinfo INTERFACE CPUINFO_SUPPORTED_PLATFORM=0)
