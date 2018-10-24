@@ -119,19 +119,24 @@ SET(CPUINFO_SRCS
   src/init.c
   src/api.c)
 
+set(CPUINFO_X86_SRCS
+  src/x86/init.c
+  src/x86/info.c
+  src/x86/vendor.c
+  src/x86/uarch.c
+  src/x86/name.c
+  src/x86/topology.c
+  src/x86/isa.c
+  src/x86/cache/init.c
+  src/x86/cache/descriptor.c
+  src/x86/cache/deterministic.c
+)
+
 IF(CPUINFO_SUPPORTED_PLATFORM)
   IF(CMAKE_SYSTEM_PROCESSOR MATCHES "^(i686|x86_64|AMD64)$")
     LIST(APPEND CPUINFO_SRCS
-      src/x86/init.c
-      src/x86/info.c
-      src/x86/vendor.c
-      src/x86/uarch.c
-      src/x86/name.c
-      src/x86/topology.c
-      src/x86/isa.c
-      src/x86/cache/init.c
-      src/x86/cache/descriptor.c
-      src/x86/cache/deterministic.c)
+        ${CPUINFO_X86_SRCS}
+      )
     IF(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR CMAKE_SYSTEM_NAME STREQUAL "Android")
       LIST(APPEND CPUINFO_SRCS
         src/x86/linux/init.c
@@ -173,6 +178,10 @@ IF(CPUINFO_SUPPORTED_PLATFORM)
     IF(CMAKE_SYSTEM_NAME STREQUAL "Android")
       LIST(APPEND CPUINFO_SRCS
         src/arm/android/properties.c)
+    ENDIF()
+    IF(IOS)
+      # Required for iOS Simulator
+      LIST(APPEND CPUINFO_SRCS src/x86/mach/init.c ${CPUINFO_X86_SRCS})
     ENDIF()
   ENDIF()
 
@@ -229,8 +238,11 @@ IF(CPUINFO_SUPPORTED_PLATFORM)
     TARGET_LINK_LIBRARIES(cpuinfo INTERFACE "-framework Foundation")
     IF ( COMMAND make_universal )
       make_universal( cpuinfo )
+      string( REPLACE ";" " " XCODE_CPUINFO_X86_SRCS "${CPUINFO_X86_SRCS}" )
       set_target_properties( cpuinfo PROPERTIES
         XCODE_ATTRIBUTE_EXCLUDED_SOURCE_FILE_NAMES[sdk=iphonesimulator*] "src/arm/mach/init.c"
+        XCODE_ATTRIBUTE_EXCLUDED_SOURCE_FILE_NAMES[sdk=iphoneos*] "src/x86/mach/init.c ${XCODE_CPUINFO_X86_SRCS}"
+
       )
     ENDIF()
   ENDIF()
