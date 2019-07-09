@@ -77,7 +77,7 @@ IF(NOT CMAKE_SYSTEM_NAME)
       "Target operating system is not specified. "
       "cpuinfo will compile, but cpuinfo_initialize() will always fail.")
   SET(CPUINFO_SUPPORTED_PLATFORM FALSE)
-ELSEIF(NOT CMAKE_SYSTEM_NAME MATCHES "^(Windows|Darwin|Linux|Android)$")
+ELSEIF(NOT CMAKE_SYSTEM_NAME MATCHES "^(Windows|iOS|Darwin|Linux|Android)$")
   MESSAGE(WARNING
     "Target operating system \"${CMAKE_SYSTEM_NAME}\" is not supported in cpuinfo. "
     "cpuinfo will compile, but cpuinfo_initialize() will always fail.")
