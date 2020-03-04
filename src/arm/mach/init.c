@@ -11,9 +11,8 @@
 
 #include <cpuinfo.h>
 #include <mach/api.h>
-#include <gpu/api.h>
-#include <api.h>
-#include <log.h>
+#include <cpuinfo/internal-api.h>
+#include <cpuinfo/log.h>
 
 
 struct cpuinfo_arm_isa cpuinfo_isa = {
@@ -47,31 +46,31 @@ static uint32_t get_sys_info(int type_specifier, const char* name) {
 	uint32_t result = 0;
 	int mib[2] = { CTL_HW, type_specifier };
 	if (sysctl(mib, 2, NULL, &size, NULL, 0) != 0) {
-		cpuinfo_log_error("sysctl(\"%s\") failed: %s", name, strerror(errno));
+		cpuinfo_log_info("sysctl(\"%s\") failed: %s", name, strerror(errno));
 	} else if (size == sizeof(uint32_t)) {
 		sysctl(mib, 2, &result, &size, NULL, 0);
 		cpuinfo_log_debug("%s: %"PRIu32 ", size = %lu", name, result, size);
 	} else {
-		cpuinfo_log_warning("sysctl does not support non-integer lookup for (\"%s\")", name);
+		cpuinfo_log_info("sysctl does not support non-integer lookup for (\"%s\")", name);
 	}
 	return result;
 }
 
-static uint64_t get_sys_info_by_name(const char* type_specifier) {
+static uint32_t get_sys_info_by_name(const char* type_specifier) {
 	size_t size = 0;
 	uint32_t result = 0;
 	if (sysctlbyname(type_specifier, NULL, &size, NULL, 0) != 0) {
-		cpuinfo_log_error("sysctlbyname(\"%s\") failed: %s", type_specifier, strerror(errno));
+		cpuinfo_log_info("sysctlbyname(\"%s\") failed: %s", type_specifier, strerror(errno));
 	} else if (size == sizeof(uint32_t)) {
 		sysctlbyname(type_specifier, &result, &size, NULL, 0);
 		cpuinfo_log_debug("%s: %"PRIu32 ", size = %lu", type_specifier, result, size);
 	} else {
-		cpuinfo_log_warning("sysctl does not support non-integer lookup for (\"%s\")", type_specifier);
+		cpuinfo_log_info("sysctl does not support non-integer lookup for (\"%s\")", type_specifier);
 	}
 	return result;
 }
 
-static enum cpuinfo_uarch decode_uarch(uint32_t cpu_family, uint32_t cpu_subtype, uint32_t core_index) {
+static enum cpuinfo_uarch decode_uarch(uint32_t cpu_family, uint32_t cpu_subtype, uint32_t core_index, uint32_t core_count) {
 	switch (cpu_family) {
 		case CPUFAMILY_ARM_SWIFT:
 			return cpuinfo_uarch_swift;
@@ -91,6 +90,14 @@ static enum cpuinfo_uarch decode_uarch(uint32_t cpu_family, uint32_t cpu_subtype
 #endif
 			/* 2x Monsoon + 4x Mistral cores */
 			return core_index < 2 ? cpuinfo_uarch_monsoon : cpuinfo_uarch_mistral;
+#ifdef CPUFAMILY_ARM_VORTEX_TEMPEST
+		case CPUFAMILY_ARM_VORTEX_TEMPEST:
+#else
+		case 0x07d34b9f:
+			/* Hard-coded value for older SDKs which do not define CPUFAMILY_ARM_VORTEX_TEMPEST */
+#endif
+			/* Hexa-core: 2x Vortex + 4x Tempest; Octa-core: 4x Cortex + 4x Tempest */
+			return core_index + 4 < core_count ? cpuinfo_uarch_vortex : cpuinfo_uarch_tempest;
 		default:
 			/* Use hw.cpusubtype for detection */
 			break;
@@ -274,7 +281,6 @@ void cpuinfo_arm_mach_init(void) {
 			.core_count = cores_per_package,
 		};
 		decode_package_name(packages[i].name);
-		cpuinfo_gpu_ios_query_gles2(packages[i].gpu_name);
 	}
 
 
@@ -315,6 +321,32 @@ void cpuinfo_arm_mach_init(void) {
 			break;
 #endif
 	}
+	/*
+	 * Support for ARMv8.1 Atomics & FP16 arithmetic instructions is supposed to be detected via
+	 * sysctlbyname calls with "hw.optional.armv8_1_atomics" and "hw.optional.neon_fp16" arguments
+	 * (see https://devstreaming-cdn.apple.com/videos/wwdc/2018/409t8zw7rumablsh/409/409_whats_new_in_llvm.pdf),
+	 * but on new iOS versions these calls just fail with EPERM.
+	 *
+	 * Thus, we whitelist CPUs known to support these instructions.
+	 */
+	switch (cpu_family) {
+#ifdef CPUFAMILY_ARM_MONSOON_MISTRAL
+		case CPUFAMILY_ARM_MONSOON_MISTRAL:
+#else
+		case 0xe81e7ef6:
+			/* Hard-coded value for older SDKs which do not define CPUFAMILY_ARM_MONSOON_MISTRAL */
+#endif
+#ifdef CPUFAMILY_ARM_VORTEX_TEMPEST
+		case CPUFAMILY_ARM_VORTEX_TEMPEST:
+#else
+		case 0x07d34b9f:
+			/* Hard-coded value for older SDKs which do not define CPUFAMILY_ARM_VORTEX_TEMPEST */
+#endif
+#if CPUINFO_ARCH_ARM64
+			cpuinfo_isa.atomics = true;
+#endif
+			cpuinfo_isa.fp16arith = true;
+	}
 
 	uint32_t num_clusters = 1;
 	for (uint32_t i = 0; i < mach_topology.cores; i++) {
@@ -324,7 +356,7 @@ void cpuinfo_arm_mach_init(void) {
 			.core_id = i % cores_per_package,
 			.package = packages + i / cores_per_package,
 			.vendor = cpuinfo_vendor_apple,
-			.uarch = decode_uarch(cpu_family, cpu_subtype, i),
+			.uarch = decode_uarch(cpu_family, cpu_subtype, i, mach_topology.cores),
 		};
 		if (i != 0 && cores[i].uarch != cores[i - 1].uarch) {
 			num_clusters++;
@@ -529,6 +561,8 @@ void cpuinfo_arm_mach_init(void) {
 	cpuinfo_cores_count = mach_topology.cores;
 	cpuinfo_clusters_count = num_clusters;
 	cpuinfo_packages_count = mach_topology.packages;
+
+	cpuinfo_max_cache_size = cpuinfo_compute_max_cache_size(&processors[0]);
 
 	__sync_synchronize();
 

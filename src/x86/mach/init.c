@@ -5,8 +5,8 @@
 #include <cpuinfo.h>
 #include <x86/api.h>
 #include <mach/api.h>
-#include <api.h>
-#include <log.h>
+#include <cpuinfo/internal-api.h>
+#include <cpuinfo/log.h>
 
 
 static inline uint32_t max(uint32_t a, uint32_t b) {
@@ -326,6 +326,8 @@ void cpuinfo_x86_mach_init(void) {
 	cpuinfo_cores_count = mach_topology.cores;
 	cpuinfo_clusters_count = mach_topology.packages;
 	cpuinfo_packages_count = mach_topology.packages;
+
+	cpuinfo_max_cache_size = cpuinfo_compute_max_cache_size(&processors[0]);
 
 	__sync_synchronize();
 

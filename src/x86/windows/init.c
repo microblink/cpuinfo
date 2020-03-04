@@ -5,8 +5,8 @@
 
 #include <cpuinfo.h>
 #include <x86/api.h>
-#include <api.h>
-#include <log.h>
+#include <cpuinfo/internal-api.h>
+#include <cpuinfo/log.h>
 
 #include <Windows.h>
 
@@ -570,6 +570,8 @@ BOOL CALLBACK cpuinfo_x86_windows_init(PINIT_ONCE init_once, PVOID parameter, PV
 	cpuinfo_cores_count = cores_count;
 	cpuinfo_clusters_count = packages_count;
 	cpuinfo_packages_count = packages_count;
+
+	cpuinfo_max_cache_size = cpuinfo_compute_max_cache_size(&processors[0]);
 
 	MemoryBarrier();
 

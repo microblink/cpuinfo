@@ -1,24 +1,11 @@
-#include <stdbool.h>
 #include <stdint.h>
-#include <stdlib.h>
 #include <stddef.h>
-#include <string.h>
-#include <errno.h>
-
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <sched.h>
 
 #if !CPUINFO_MOCK
 	#error This file should be built only in mock mode
 #endif
 
 #include <cpuinfo-mock.h>
-#include <arm/linux/api.h>
-#include <arm/midr.h>
-#include <log.h>
 
 
 static struct cpuinfo_mock_cpuid* cpuinfo_mock_cpuid_data = NULL;
@@ -30,7 +17,7 @@ void CPUINFO_ABI cpuinfo_mock_set_cpuid(struct cpuinfo_mock_cpuid* dump, size_t 
 	cpuinfo_mock_cpuid_entries = entries;	
 };
 
-void CPUINFO_ABI cpuinfo_mock_get_cpuid(uint32_t eax, uint32_t regs[restrict static 4]) {
+void CPUINFO_ABI cpuinfo_mock_get_cpuid(uint32_t eax, uint32_t regs[4]) {
 	if (eax != 4) {
 		cpuinfo_mock_cpuid_leaf4_iteration = 0;
 	}
@@ -64,7 +51,7 @@ void CPUINFO_ABI cpuinfo_mock_get_cpuid(uint32_t eax, uint32_t regs[restrict sta
 	regs[0] = regs[1] = regs[2] = regs[3] = 0;
 }
 
-void CPUINFO_ABI cpuinfo_mock_get_cpuidex(uint32_t eax, uint32_t ecx, uint32_t regs[restrict static 4]) {
+void CPUINFO_ABI cpuinfo_mock_get_cpuidex(uint32_t eax, uint32_t ecx, uint32_t regs[4]) {
 	cpuinfo_mock_cpuid_leaf4_iteration = 0;
 	if (cpuinfo_mock_cpuid_data != NULL && cpuinfo_mock_cpuid_entries != 0) {
 		for (uint32_t i = 0; i < cpuinfo_mock_cpuid_entries; i++) {

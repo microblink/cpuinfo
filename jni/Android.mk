@@ -5,8 +5,6 @@ LOCAL_MODULE := cpuinfo
 LOCAL_SRC_FILES := \
 	src/init.c \
 	src/api.c \
-	src/gpu/gles2.c \
-	src/linux/gpu.c \
 	src/linux/current.c \
 	src/linux/processors.c \
 	src/linux/smallfile.c \
@@ -22,7 +20,6 @@ LOCAL_SRC_FILES += \
 	src/arm/linux/chipset.c \
 	src/arm/linux/midr.c \
 	src/arm/linux/hwcap.c \
-	src/arm/android/gpu.c \
 	src/arm/android/properties.c
 ifeq ($(TARGET_ARCH_ABI),armeabi)
 LOCAL_SRC_FILES += src/arm/linux/aarch32-isa.c.arm
@@ -52,6 +49,18 @@ endif # x86 or x86_64
 LOCAL_EXPORT_C_INCLUDES := $(LOCAL_PATH)/include
 LOCAL_C_INCLUDES := $(LOCAL_EXPORT_C_INCLUDES) $(LOCAL_PATH)/src
 LOCAL_CFLAGS := -std=c99 -Wall -D_GNU_SOURCE=1
+ifeq (,$(findstring 4.9,$(NDK_TOOLCHAIN)))
+# Clang compiler supports -Oz
+LOCAL_CFLAGS += -Oz
+else
+# gcc-4.9 compiler supports only -Os
+LOCAL_CFLAGS += -Os
+endif
+ifeq ($(NDK_DEBUG),1)
+LOCAL_CFLAGS += -DCPUINFO_LOG_LEVEL=5
+else
+LOCAL_CFLAGS += -DCPUINFO_LOG_LEVEL=0
+endif
 LOCAL_STATIC_LIBRARIES := clog
 include $(BUILD_STATIC_LIBRARY)
 
