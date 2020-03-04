@@ -151,7 +151,7 @@ IF(CPUINFO_SUPPORTED_PLATFORM)
     ELSEIF(CMAKE_SYSTEM_NAME STREQUAL "Windows")
       LIST(APPEND CPUINFO_SRCS src/x86/windows/init.c)
     ENDIF()
-  ELSEIF(CMAKE_SYSTEM_PROCESSOR MATCHES "^(armv[5-8].*|aarch64)$" OR IOS_ARCH MATCHES "^(armv7.*|arm64.*)$")
+  ELSEIF(CMAKE_SYSTEM_PROCESSOR MATCHES "^(armv[5-8].*|aarch64)$" OR IOS_ARCH MATCHES "^(armv7.*|arm64.*)$" OR CMAKE_SYSTEM_NAME STREQUAL "iOS" )
     LIST(APPEND CPUINFO_SRCS
       src/arm/uarch.c
       src/arm/cache.c)
@@ -191,11 +191,6 @@ IF(CPUINFO_SUPPORTED_PLATFORM)
       src/linux/current.c
       src/linux/cpulist.c
       src/linux/processors.c)
-    IF(CMAKE_SYSTEM_NAME STREQUAL "Android")
-      LIST(APPEND CPUINFO_SRCS
-        src/gpu/gles2.c
-        src/linux/gpu.c)
-    ENDIF()
   ELSEIF(CMAKE_SYSTEM_NAME STREQUAL "Darwin" OR CMAKE_SYSTEM_NAME STREQUAL "iOS")
     LIST(APPEND CPUINFO_SRCS src/mach/topology.c)
   ENDIF()
@@ -251,18 +246,21 @@ IF(CPUINFO_SUPPORTED_PLATFORM)
     TARGET_LINK_LIBRARIES(cpuinfo_internals PUBLIC ${CMAKE_THREAD_LIBS_INIT})
     TARGET_COMPILE_DEFINITIONS(cpuinfo PRIVATE _GNU_SOURCE=1)
     TARGET_COMPILE_DEFINITIONS(cpuinfo_internals PRIVATE _GNU_SOURCE=1)
-    IF ( COMMAND make_universal )
-      make_universal( cpuinfo )
-      string( REPLACE ";" " " XCODE_CPUINFO_X86_SRCS "${CPUINFO_X86_SRCS}" )
-      set_target_properties( cpuinfo PROPERTIES
-        XCODE_ATTRIBUTE_EXCLUDED_SOURCE_FILE_NAMES[sdk=iphonesimulator*] "src/arm/mach/init.c"
-        XCODE_ATTRIBUTE_EXCLUDED_SOURCE_FILE_NAMES[sdk=iphoneos*] "src/x86/mach/init.c ${XCODE_CPUINFO_X86_SRCS}"
-
-      )
-    ENDIF()
   ENDIF()
 ELSE()
   TARGET_COMPILE_DEFINITIONS(cpuinfo INTERFACE CPUINFO_SUPPORTED_PLATFORM=0)
+ENDIF()
+
+IF ( COMMAND make_universal )
+    make_universal( cpuinfo )
+    make_universal( cpuinfo_internals )
+    string( REPLACE ";" " " XCODE_CPUINFO_X86_SRCS "${CPUINFO_X86_SRCS}" )
+    set( xcode_properties
+        XCODE_ATTRIBUTE_EXCLUDED_SOURCE_FILE_NAMES[sdk=iphonesimulator*] "src/arm/mach/init.c"
+        XCODE_ATTRIBUTE_EXCLUDED_SOURCE_FILE_NAMES[sdk=iphoneos*] "src/x86/mach/init.c ${XCODE_CPUINFO_X86_SRCS}"
+    )
+    set_target_properties( cpuinfo           PROPERTIES ${xcode_properties} )
+    set_target_properties( cpuinfo_internals PROPERTIES ${xcode_properties} )
 ENDIF()
 
 # ---[ cpuinfo dependencies: clog
