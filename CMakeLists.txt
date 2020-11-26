@@ -61,7 +61,7 @@ ENDMACRO()
 # ---[ Build flags
 SET(CPUINFO_SUPPORTED_PLATFORM TRUE)
 IF(NOT CMAKE_SYSTEM_PROCESSOR)
-  IF(NOT IOS)
+  IF(NOT APPLE)
     MESSAGE(WARNING
       "Target processor architecture is not specified. "
       "cpuinfo will compile, but cpuinfo_initialize() will always fail.")
@@ -151,7 +151,7 @@ IF(CPUINFO_SUPPORTED_PLATFORM)
     ELSEIF(CMAKE_SYSTEM_NAME MATCHES "^(Windows|CYGWIN|MSYS)$")
       LIST(APPEND CPUINFO_SRCS src/x86/windows/init.c)
     ENDIF()
-  ELSEIF(CMAKE_SYSTEM_PROCESSOR MATCHES "^(armv[5-8].*|aarch64)$" OR IOS_ARCH MATCHES "^(armv7.*|arm64.*)$" OR CMAKE_SYSTEM_NAME STREQUAL "iOS" )
+  ELSEIF(CMAKE_SYSTEM_PROCESSOR MATCHES "^(armv[5-8].*|aarch64)$" OR IOS_ARCH MATCHES "^(armv7.*|arm64.*)$" OR APPLE )
     LIST(APPEND CPUINFO_SRCS
       src/arm/uarch.c
       src/arm/cache.c)
@@ -171,14 +171,14 @@ IF(CPUINFO_SUPPORTED_PLATFORM)
       ELSEIF(CMAKE_SYSTEM_PROCESSOR STREQUAL "aarch64")
         LIST(APPEND CPUINFO_SRCS src/arm/linux/aarch64-isa.c)
       ENDIF()
-    ELSEIF(IOS)
+    ELSEIF(APPLE)
       LIST(APPEND CPUINFO_SRCS src/arm/mach/init.c)
     ENDIF()
     IF(CMAKE_SYSTEM_NAME STREQUAL "Android")
       LIST(APPEND CPUINFO_SRCS
         src/arm/android/properties.c)
     ENDIF()
-    IF(IOS)
+    IF(APPLE)
       # Required for iOS Simulator
       LIST(APPEND CPUINFO_SRCS src/x86/mach/init.c ${CPUINFO_X86_SRCS})
     ENDIF()
@@ -260,13 +260,14 @@ ELSE()
   TARGET_COMPILE_DEFINITIONS(cpuinfo INTERFACE CPUINFO_SUPPORTED_PLATFORM=0)
 ENDIF()
 
-IF ( COMMAND make_universal )
-    make_universal( cpuinfo )
-    make_universal( cpuinfo_internals )
+IF ( CMAKE_GENERATOR STREQUAL "Xcode" )
     string( REPLACE ";" " " XCODE_CPUINFO_X86_SRCS "${CPUINFO_X86_SRCS}" )
     set( xcode_properties
-        XCODE_ATTRIBUTE_EXCLUDED_SOURCE_FILE_NAMES[sdk=iphonesimulator*] "src/arm/mach/init.c"
-        XCODE_ATTRIBUTE_EXCLUDED_SOURCE_FILE_NAMES[sdk=iphoneos*] "src/x86/mach/init.c ${XCODE_CPUINFO_X86_SRCS}"
+        XCODE_ATTRIBUTE_EXCLUDED_SOURCE_FILE_NAMES[arch=x86_64] "src/arm/mach/init.c"
+        XCODE_ATTRIBUTE_EXCLUDED_SOURCE_FILE_NAMES[arch=i386] "src/arm/mach/init.c"
+        XCODE_ATTRIBUTE_EXCLUDED_SOURCE_FILE_NAMES[arch=armv7] "src/x86/mach/init.c ${XCODE_CPUINFO_X86_SRCS}"
+        XCODE_ATTRIBUTE_EXCLUDED_SOURCE_FILE_NAMES[arch=armv7s] "src/x86/mach/init.c ${XCODE_CPUINFO_X86_SRCS}"
+        XCODE_ATTRIBUTE_EXCLUDED_SOURCE_FILE_NAMES[arch=arm64] "src/x86/mach/init.c ${XCODE_CPUINFO_X86_SRCS}"
     )
     set_target_properties( cpuinfo           PROPERTIES ${xcode_properties} )
     set_target_properties( cpuinfo_internals PROPERTIES ${xcode_properties} )
