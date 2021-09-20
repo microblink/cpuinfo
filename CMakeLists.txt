@@ -172,8 +172,8 @@ IF(CPUINFO_SUPPORTED_PLATFORM)
       LIST(APPEND CPUINFO_SRCS
         src/arm/android/properties.c)
     ENDIF()
-    IF(APPLE)
-      # Required for iOS Simulator
+    IF(APPLE AND CMAKE_GENERATOR STREQUAL "Xcode")
+      # Required for Xcode fat binary build
       LIST(APPEND CPUINFO_SRCS src/x86/mach/init.c ${CPUINFO_X86_SRCS})
     ENDIF()
   ENDIF()
