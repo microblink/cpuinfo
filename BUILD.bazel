@@ -218,6 +218,9 @@ cc_library(
         "src/riscv/api.h",
         "src/riscv/linux/api.h",
     ],
+    features = [
+        "-ubsan",
+    ],
 )
 
 cc_library(
