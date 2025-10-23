@@ -186,6 +186,7 @@ cc_library(
         "-Iexternal/cpuinfo/include",
         "-Iexternal/cpuinfo/src",
         "-DCPUINFO_LOG_LEVEL=2",
+        "-w",
     ],
     includes = [
         "include",
